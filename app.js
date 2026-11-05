@@ -45,6 +45,11 @@
     return "items/" + encodeURIComponent(id) + "/";
   }
 
+  /* 重建后同名文件内容会变，带上版本号避免浏览器和 GitHub Pages 的缓存继续显示旧模型 */
+  function ver(item) {
+    return "?v=" + (item.v || 0);
+  }
+
   function itemHash(id) {
     return "#/item/" + encodeURIComponent(id);
   }
@@ -229,7 +234,7 @@
     cat.appendChild(marked(item.category, terms));
     var hit = terms.length ? S.snippet(item, terms) : "";
     var media = item.thumb
-      ? el("img", { src: assetBase(item.id) + "thumb.webp", alt: item.name, loading: "lazy", decoding: "async", width: 480, height: 480 })
+      ? el("img", { src: assetBase(item.id) + "thumb.webp" + ver(item), alt: item.name, loading: "lazy", decoding: "async", width: 480, height: 480 })
       : placeholder();
     var snippet = null;
     if (hit) {
@@ -433,7 +438,7 @@
         if (loaded === count) progress.hidden = true;
         draw();
       };
-      img.src = base + String(i).padStart(3, "0") + ".webp";
+      img.src = base + String(i).padStart(3, "0") + ".webp" + ver(item);
       images.push(img);
     }
 
@@ -479,7 +484,7 @@
     loadModelViewer().then(function () {
       if (cancelled) return;
       var viewer = el("model-viewer", {
-        src: assetBase(item.id) + "model.glb",
+        src: assetBase(item.id) + "model.glb" + ver(item),
         alt: item.name + " 三维模型",
         "camera-controls": true,
         "auto-rotate": true,
@@ -560,7 +565,7 @@
 
     function show(next) {
       index = (next + item.photos) % item.photos;
-      img.src = base + photoName(index);
+      img.src = base + photoName(index) + ver(item);
       pos.textContent = index + 1 + " / " + item.photos;
     }
 
@@ -625,7 +630,7 @@
           onclick: function () {
             lightbox(item, index);
           },
-        }, el("img", { src: base + photoName(index, true), alt: "", loading: "lazy", decoding: "async" })));
+        }, el("img", { src: base + photoName(index, true) + ver(item), alt: "", loading: "lazy", decoding: "async" })));
       })(i);
     }
     holder.replaceChildren(el("div", { class: "gallery" }, buttons));
@@ -664,7 +669,7 @@
       }
       if (key === "video") {
         body.replaceChildren(el("div", { class: "video-wrap" }, item.videos.map(function (name) {
-          return el("video", { src: assetBase(item.id) + name, controls: true, playsinline: true, preload: "metadata" });
+          return el("video", { src: assetBase(item.id) + name + ver(item), controls: true, playsinline: true, preload: "metadata" });
         })));
         return;
       }
@@ -934,19 +939,68 @@
 
   window.addEventListener("hashchange", route);
 
-  fetch("data/catalog.json", { cache: "no-cache" })
-    .then(function (response) {
+  function applyCatalog(data) {
+    catalog = data;
+    catalog.items.forEach(S.indexItem);
+    document.getElementById("siteTitle").textContent = data.site.title;
+    document.getElementById("siteSubtitle").textContent = data.site.subtitle;
+    document.getElementById("footerText").textContent = data.site.footer;
+    filtered = S.filterItems(catalog.items, state);
+  }
+
+  function fetchCatalog() {
+    /* 加时间戳绕过 GitHub Pages 的 10 分钟缓存 */
+    return fetch("data/catalog.json?t=" + Date.now(), { cache: "no-store" }).then(function (response) {
       if (!response.ok) throw new Error("HTTP " + response.status);
       return response.json();
-    })
+    });
+  }
+
+  /* ---------- 自动更新：新模型建好发布后，开着的页面不用手动刷新 ---------- */
+
+  var updateBar = null;
+
+  function showUpdateBar() {
+    if (updateBar) return;
+    updateBar = el("button", {
+      class: "update-bar",
+      text: "资源库有更新，点此刷新本页",
+      onclick: function () {
+        updateBar.remove();
+        updateBar = null;
+        route();
+      },
+    });
+    document.body.appendChild(updateBar);
+  }
+
+  function checkForUpdate() {
+    if (!catalog || document.hidden) return;
+    fetchCatalog().then(function (data) {
+      if (data.generated === catalog.generated) return;
+      var onDetail = /^#\/(item|hall)\//.test(location.hash);
+      var input = document.activeElement === searchInput;
+      applyCatalog(data);
+      if (onDetail) {
+        showUpdateBar(); /* 正在看模型时不打断 */
+      } else if (!input) {
+        var y = window.scrollY;
+        route();
+        window.scrollTo(0, y);
+      }
+    }).catch(function () {
+      /* 网络抖动时下次再试 */
+    });
+  }
+
+  fetchCatalog()
     .then(function (data) {
-      catalog = data;
-      catalog.items.forEach(S.indexItem);
-      document.getElementById("siteTitle").textContent = data.site.title;
-      document.getElementById("siteSubtitle").textContent = data.site.subtitle;
-      document.getElementById("footerText").textContent = data.site.footer;
-      filtered = S.filterItems(catalog.items, state);
+      applyCatalog(data);
       route();
+      setInterval(checkForUpdate, 60000);
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) checkForUpdate();
+      });
     })
     .catch(function () {
       app.replaceChildren(el("p", { class: "status", text: "目录加载失败。如果是直接双击打开的文件，请改用 python3 m3d.py serve 预览。" }));
