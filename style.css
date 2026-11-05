@@ -199,7 +199,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
 .tool[aria-pressed="true"] { background: #f4eee2; color: #14120f; }
-.ar-btn { position: absolute; left: 10px; bottom: 10px; }
+.ar-btn { position: absolute; right: 10px; top: 10px; }
 .progress { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: transparent; z-index: 2; }
 .progress i { display: block; height: 100%; width: 0; background: #e3b22d; transition: width .2s; }
 .hint { position: absolute; left: 12px; top: 10px; z-index: 2; color: rgba(244, 238, 226, .78); font-size: 12.5px; pointer-events: none; }

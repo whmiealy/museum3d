@@ -516,7 +516,7 @@
         },
       });
       var full = el("button", { class: "tool", text: "全屏", onclick: enterFull });
-      var ar = el("button", { class: "tool ar-btn", slot: "ar-button", text: "在空间中查看（AR）" });
+      var ar = el("button", { class: "tool ar-btn", slot: "ar-button", text: "AR 查看" });
       viewer.appendChild(ar);
 
       viewer.addEventListener("progress", function (event) {
