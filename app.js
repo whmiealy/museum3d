@@ -41,6 +41,11 @@
     return node;
   }
 
+  /* 站内相对地址（如 hall/）：不用新窗口，直接进入 */
+  function isLocalUrl(url) {
+    return !!url && !/^[a-z]+:|^\/\//i.test(url);
+  }
+
   function assetBase(id) {
     return "items/" + encodeURIComponent(id) + "/";
   }
@@ -790,6 +795,10 @@
       },
     });
 
+    var inHall = item.exhibit
+      ? el("a", { class: "btn", href: "hall/#exhibit=" + encodeURIComponent(item.exhibit), text: "在展馆中查看（" + item.exhibit + "）" })
+      : null;
+
     var viewer = el("div", { class: "viewer" });
     app.replaceChildren(el("div", { class: "detail" }, [
       el("nav", { class: "crumb", "aria-label": "分类路径" }, crumbs),
@@ -818,7 +827,7 @@
           el("dl", { class: "facts" }, factNodes),
           el("div", { class: "share" }, [
             el("img", { src: "qr/" + encodeURIComponent(item.id) + ".png", alt: "本页二维码", loading: "lazy" }),
-            el("div", { class: "share-text" }, [el("span", { text: "扫码在手机上查看" }), copied]),
+            el("div", { class: "share-text" }, [el("span", { text: "扫码在手机上查看" }), copied, inHall]),
           ]),
           el("div", { class: "pager" }, [
             pagerLink(list[at - 1], "← ", "prev-link"),
@@ -837,7 +846,7 @@
     runCleanups();
     document.title = "展馆 · " + catalog.site.title;
     var cards = catalog.halls.map(function (hall) {
-      return el("a", { class: "hall-card", href: "#/hall/" + encodeURIComponent(hall.id) }, [
+      return el("a", { class: "hall-card", href: isLocalUrl(hall.url) ? hall.url : "#/hall/" + encodeURIComponent(hall.id) }, [
         el("div", { class: "cover" }, hall.cover ? el("img", { src: hall.cover, alt: hall.name, loading: "lazy" }) : placeholder()),
         el("div", { class: "text" }, [el("h2", { text: hall.name }), el("p", { text: hall.description })]),
       ]);
@@ -860,6 +869,10 @@
     document.title = hall.name + " · " + catalog.site.title;
     if (!hall.viewer && !hall.url) {
       app.replaceChildren(el("p", { class: "status", text: "这个展馆还没有接入场景" }));
+      return;
+    }
+    if (!hall.viewer && isLocalUrl(hall.url)) {
+      location.replace(hall.url);
       return;
     }
     if (!hall.viewer) {
