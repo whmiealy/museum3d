@@ -795,8 +795,8 @@
       },
     });
 
-    var inHall = item.exhibit
-      ? el("a", { class: "btn", href: "hall/#exhibit=" + encodeURIComponent(item.exhibit), text: "在展馆中查看（" + item.exhibit + "）" })
+    var inHall = item.inHall
+      ? el("a", { class: "btn", href: "hall/#item=" + encodeURIComponent(item.id), text: "在展馆中查看" })
       : null;
 
     var viewer = el("div", { class: "viewer" });
